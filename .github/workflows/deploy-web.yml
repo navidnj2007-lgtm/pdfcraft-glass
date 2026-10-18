@@ -53,4 +53,9 @@ jobs:
           if [ -n "$too_big" ]; then echo "Over 25 MiB: $too_big"; exit 1; fi
       - name: Deploy to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
-        run: npx --yes wrangler@4 pages deploy dist/web --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
+        run: |
+          # The first deploy creates the project; later ones find it there.
+          if ! npx --yes wrangler@4 pages project list | grep -qw "$PAGES_PROJECT"; then
+            npx --yes wrangler@4 pages project create "$PAGES_PROJECT" --production-branch=main
+          fi
+          npx --yes wrangler@4 pages deploy dist/web --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
