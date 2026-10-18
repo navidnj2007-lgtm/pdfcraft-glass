@@ -1,0 +1,7 @@
+[alias]
+xtask = "run -p xtask --"
+
+# WebAssembly SIMD (Safari 16.4+, Chrome 91+, Firefox 89+): the rasterizer's vector paths
+# (fearless_simd) run four lanes at a time instead of one.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
