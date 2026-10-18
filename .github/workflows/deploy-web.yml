@@ -1,9 +1,8 @@
-# Build the web app and publish it to Cloudflare Pages on every push to main.
+# Build the web app on every push to main and publish the finished site to the `web` branch.
 #
-# Needs two repository secrets (Settings ▸ Secrets and variables ▸ Actions):
-#   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account that owns the Pages project
-#   CLOUDFLARE_API_TOKEN   a token with the "Cloudflare Pages: Edit" permission
-# Without them the build still runs and the deploy step is skipped.
+# Cloudflare Pages serves that branch through its GitHub integration (Workers & Pages ▸
+# Connect to Git ▸ this repository, production branch `web`, no build command, output
+# directory `/`). The Rust build runs here because it outlasts Cloudflare's build time limit.
 name: Deploy web app
 
 on:
@@ -16,18 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-
-env:
-  PAGES_PROJECT: pdfcraft-glass
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
@@ -51,11 +44,13 @@ jobs:
           ls -l dist/web
           too_big=$(find dist/web -type f -size +25M)
           if [ -n "$too_big" ]; then echo "Over 25 MiB: $too_big"; exit 1; fi
-      - name: Deploy to Cloudflare Pages
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+      - name: Publish to the web branch
+        working-directory: dist/web
         run: |
-          # The first deploy creates the project; later ones find it there.
-          if ! npx --yes wrangler@4 pages project list | grep -qw "$PAGES_PROJECT"; then
-            npx --yes wrangler@4 pages project create "$PAGES_PROJECT" --production-branch=main
-          fi
-          npx --yes wrangler@4 pages deploy dist/web --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
+          # One commit, replaced each time: the branch holds only the current site.
+          git init -q -b web
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web build of ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" web
