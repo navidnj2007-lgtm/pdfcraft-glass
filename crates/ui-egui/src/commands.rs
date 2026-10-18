@@ -766,8 +766,16 @@ fn tab_after(current: Option<usize>, count: usize, forward: bool) -> Option<usiz
 }
 
 /// Render a top-level menu's registered commands (with live labels, shortcuts and enablement).
+/// Commands with nothing to act on in a browser, left out of its menus: a web page has no
+/// folders to pin.
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+const DESKTOP_ONLY: &[&str] = &["file.pin_folder"];
+
 pub(crate) fn registry_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, menu: &str) {
     for spec in commands::menu(menu) {
+        if cfg!(target_arch = "wasm32") && DESKTOP_ONLY.contains(&spec.id) {
+            continue;
+        }
         let label = commands::current_label(spec, &app.session, app.active_ids().map(|(_, id)| id));
         let label = crate::i18n::menu_label(spec.id, &label);
         // Open Recent is a submenu of the live recent list, not one action: disabled while the
