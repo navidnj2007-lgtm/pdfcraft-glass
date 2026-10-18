@@ -2325,6 +2325,9 @@ const KEY_SCROLL_LINE: f32 = 40.0;
 
 pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A finger on the pages pans them; the Pencil keeps the tool (`touch`).
+    let shown_at = app.views.get(index).map_or(egui::Rect::NOTHING, |v| v.viewport_screen);
+    app.touch_tools(ui.ctx(), shown_at);
     // Keyboard scrolling applies to this frame's page view only, never later.
     let key_scroll = std::mem::take(&mut app.views[index].key_scroll);
     // The Search panel closed: its search moves to the find bar.
@@ -2601,6 +2604,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             egui::scroll_area::DragScroll::Never
         } else if app.quick_tool == QuickTool::Hand {
             egui::scroll_area::DragScroll::Always
+        } else if app.pointer_kind.get() == crate::touch::Kind::Pen {
+            // The Pencil draws, highlights or selects; it never scrolls the page.
+            egui::scroll_area::DragScroll::Never
         } else {
             egui::scroll_area::DragScroll::OnTouch
         },
@@ -4605,7 +4611,8 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                     let r = resp.rect;
                     let tri = [r.right_bottom() + vec2(-4.0, -4.0), r.right_bottom() + vec2(-9.0, -4.0), r.right_bottom() + vec2(-4.0, -9.0)];
                     ui.painter().add(egui::Shape::convex_polygon(tri.to_vec(), if active { t.accent } else { t.text_faint }, Stroke::NONE));
-                    let open = (resp.clicked() && active) || resp.secondary_clicked();
+                    // A long press opens the flyout on a touch screen, which has no right click.
+                    let open = (resp.clicked() && active) || resp.secondary_clicked() || resp.long_touched();
                     if resp.clicked() && !active {
                         app.execute(current.command());
                     }
@@ -4638,6 +4645,15 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                             }
                         }
                     });
+                }
+                // Across the window (the immersive layout, a tablet) the Eraser sits beside the
+                // pens, as in note-taking apps, rather than at the end of the Draw flyout. Choosing
+                // it here leaves the Draw button on the pen it had.
+                if across {
+                    let eraser = QuickTool::Comment(comments::CommentTool::Eraser);
+                    if icons::button(ui, comments::CommentTool::Eraser.icon(), 32.0, app.quick_tool == eraser, tl!("Eraser")).clicked() {
+                        app.quick_tool = eraser;
+                    }
                 }
                 // Edit text & images, while the Edit workspace is open (Acrobat's Edit toolbar)
                 // or the tool is in use.
@@ -4674,7 +4690,7 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                 if resp.clicked() && current_fill.is_none() {
                     app.execute(shown.command());
                 }
-                let open = (resp.clicked() && current_fill.is_some()) || resp.secondary_clicked();
+                let open = (resp.clicked() && current_fill.is_some()) || resp.secondary_clicked() || resp.long_touched();
                 egui::Popup::menu(&resp).open_memory(open.then_some(egui::SetOpenCommand::Toggle)).align(flyout).gap(6.0).show(|ui| {
                     for tool in crate::fill_sign::FILL_TOOLS {
                         if matches!(tool, crate::fill_sign::FillTool::Signature | crate::fill_sign::FillTool::Initials) {

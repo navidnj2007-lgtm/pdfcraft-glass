@@ -103,6 +103,7 @@ mod pickers;
 pub mod prepare;
 mod print_ui;
 mod signature_drag;
+pub mod touch;
 pub mod units;
 mod web_print;
 mod word_count_ui;
@@ -527,6 +528,11 @@ pub struct PdfCraftApp {
     pub quick_tool: QuickTool,
     /// The tool to go back to when Space, held for a temporary Hand, is released.
     space_hand: Option<QuickTool>,
+    /// The tool to go back to when the finger panning the page lifts ([`touch`]).
+    finger_hand: Option<QuickTool>,
+    /// Whether a finger, the Apple Pencil or a mouse is pressing now: the web app's pointer
+    /// listeners report it ([`touch::PointerKind`]).
+    pub pointer_kind: touch::PointerKind,
     /// Comment author, per-tool colours and widths, pin.
     pub comment_prefs: comments::CommentPrefs,
     /// Resolved colours, including the current OS theme when following the system.
@@ -922,6 +928,8 @@ impl PdfCraftApp {
             right_panel_closed: false,
             quick_tool: QuickTool::Select,
             space_hand: None,
+            finger_hand: None,
+            pointer_kind: Default::default(),
             comment_prefs: Default::default(),
             theme: ThemeKind::Light,
             theme_preference: ThemePreference::Light,

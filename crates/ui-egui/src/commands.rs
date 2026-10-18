@@ -295,7 +295,9 @@ impl PdfCraftApp {
                 self.comment_prefs.group_tool[tool.group()] = tool;
                 self.quick_tool = crate::QuickTool::Comment(tool);
                 // Acrobat opens the Comments panel with the commenting tools, unless the user closed it.
-                if self.right.is_none() && !self.comments_panel_closed {
+                // The immersive layout doesn't: there the panel is a sheet over the page being
+                // drawn on, and it opens from its own button.
+                if self.right.is_none() && !self.comments_panel_closed && !crate::immersive::showing(self) {
                     self.choose_right_panel(Some(RightPanel::Comments));
                 }
                 // A text selection made before picking a markup tool is marked right away.

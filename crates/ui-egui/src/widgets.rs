@@ -32,14 +32,96 @@ pub fn modal(ctx: &egui::Context, id: impl std::hash::Hash + std::fmt::Debug) ->
 /// Show [`modal`], outline its controls, and remember the card rect for layout checks.
 pub fn show_modal<R>(ctx: &egui::Context, id: &str, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
     let stored = egui::Id::new(id);
+    let room = dialog_room(ctx.content_rect().size());
+    // A dialog laid out for a desktop (Print is 820 points wide, Certificate details 1,300 tall)
+    // that doesn't fit a phone's or a tablet's screen scrolls there, rather than running off its
+    // edges with its buttons. A dialog that fits is laid out exactly as before. Too tall: it
+    // scrolls vertically, its layout unchanged. Too wide (a phone): it scrolls both ways; that
+    // area gives the contents unbounded width (text stops wrapping), so it doesn't measure them.
+    // Once open and scrolling, a dialog keeps scrolling until it closes: switching to a shorter
+    // tab must not rebuild it (egui hides rebuilt contents for a frame).
+    let state_id = stored.with("fit-state");
+    let pass = ctx.cumulative_pass_nr();
+    let fit = ctx.data(|d| d.get_temp::<FitState>(state_id)).map_or(DialogFit::Fits, |s| s.next(pass, room));
     modal(ctx, id).show(ctx, |ui| {
         begin_dialog(ui);
-        let inner = content(ui);
+        let (inner, measured) = match fit {
+            DialogFit::Fits => {
+                let inner = content(ui);
+                (inner, Some(ui.min_rect().size()))
+            }
+            DialogFit::TooTall => {
+                let out = egui::ScrollArea::vertical().id_salt(stored.with("fit")).max_height(room.y).auto_shrink([true, true]).show(ui, content);
+                (out.inner, Some(out.content_size))
+            }
+            DialogFit::TooWide => {
+                let out = egui::ScrollArea::both()
+                    .id_salt(stored.with("fit"))
+                    .max_width(room.x)
+                    .max_height(room.y)
+                    .auto_shrink([true, true])
+                    .show(ui, content);
+                (out.inner, None)
+            }
+        };
+        ui.ctx().data_mut(|d| {
+            let natural = measured.or_else(|| d.get_temp::<FitState>(state_id).map(|s| s.natural)).unwrap_or_default();
+            d.insert_temp(state_id, FitState { fit, natural, pass });
+        });
         // The frame's stroke sits outside this content rect; the stored card is the fill.
         let card = ui.min_rect().expand2(egui::vec2(f32::from(DIALOG_PAD_X), f32::from(DIALOG_PAD_Y)));
         ui.ctx().data_mut(|d| d.insert_temp(stored.with("card"), card));
         inner
     })
+}
+
+/// The most room a dialog's contents get on a `screen` of this size: the screen less the
+/// dialog's padding and a margin around it, never so small that nothing fits.
+pub(crate) fn dialog_room(screen: egui::Vec2) -> egui::Vec2 {
+    let width = screen.x - 2.0 * f32::from(DIALOG_PAD_X) - 24.0;
+    let height = screen.y - 2.0 * f32::from(DIALOG_PAD_Y) - 48.0;
+    let clean = |v: f32, min: f32| if v.is_finite() { v.max(min) } else { min };
+    vec2(clean(width, 200.0), clean(height, 160.0))
+}
+
+/// How a dialog fitted last frame: its mode, its contents' natural size and the pass it showed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FitState {
+    fit: DialogFit,
+    natural: egui::Vec2,
+    pass: u64,
+}
+
+impl FitState {
+    /// The mode for pass `pass`: a dialog shown last pass never steps back to a less scrolling
+    /// mode; one opened afresh starts over, as fitting.
+    fn next(self, pass: u64, room: egui::Vec2) -> DialogFit {
+        if self.pass.saturating_add(1) < pass {
+            return DialogFit::Fits;
+        }
+        self.fit.max(dialog_fit(self.natural, room))
+    }
+}
+
+/// How a dialog's contents fit the room on screen, least scrolling first.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum DialogFit {
+    Fits,
+    /// Fits across, scrolls down.
+    TooTall,
+    /// Scrolls across (and down, if need be).
+    TooWide,
+}
+
+/// How a dialog whose contents are `natural` in size fits `room`.
+pub(crate) fn dialog_fit(natural: egui::Vec2, room: egui::Vec2) -> DialogFit {
+    if natural.x > room.x + 0.5 {
+        DialogFit::TooWide
+    } else if natural.y > room.y + 0.5 {
+        DialogFit::TooTall
+    } else {
+        DialogFit::Fits
+    }
 }
 
 /// Outlined controls at a shared 30-point height, with a focus stroke and rounded corners.
@@ -612,6 +694,33 @@ pub fn icon_pill(ui: &mut egui::Ui, icon: &str, label: &str, primary: bool) -> R
 mod tests {
     use super::*;
     use egui::Pos2;
+
+    #[test]
+    fn dialogs_get_the_screen_less_a_margin() {
+        // A desktop holds the Print dialog (820 points) whole; an iPhone and an iPad in
+        // landscape get less, and the dialog scrolls.
+        assert!(dialog_room(vec2(1440.0, 900.0)).x > 820.0);
+        assert_eq!(dialog_room(vec2(390.0, 844.0)), vec2(390.0 - 40.0 - 24.0, 844.0 - 32.0 - 48.0));
+        assert!(dialog_room(vec2(1024.0, 700.0)).y < 700.0);
+        // Nonsense screens still leave a usable minimum, never a negative or NaN size.
+        assert_eq!(dialog_room(vec2(0.0, 0.0)), vec2(200.0, 160.0));
+        assert_eq!(dialog_room(vec2(f32::NAN, f32::INFINITY)), vec2(200.0, 160.0));
+        // Only a dialog bigger than the room scrolls; one that fits keeps its layout.
+        let phone = dialog_room(vec2(390.0, 844.0));
+        assert_eq!(dialog_fit(vec2(820.0, 600.0), phone), DialogFit::TooWide, "Print on an iPhone");
+        assert_eq!(dialog_fit(vec2(820.0, 600.0), dialog_room(vec2(1440.0, 900.0))), DialogFit::Fits, "Print on a desktop");
+        assert_eq!(dialog_fit(vec2(820.0, 680.0), dialog_room(vec2(1024.0, 700.0))), DialogFit::TooTall, "Print on an iPad in landscape");
+        assert_eq!(dialog_fit(phone, phone), DialogFit::Fits, "exactly the room fits");
+        // A dialog that had to scroll keeps scrolling while open (a shorter tab doesn't rebuild
+        // it), and starts over when opened again.
+        let desk = dialog_room(vec2(1400.0, 900.0));
+        let tall = FitState { fit: DialogFit::TooTall, natural: vec2(700.0, 400.0), pass: 10 };
+        assert_eq!(tall.next(11, desk), DialogFit::TooTall);
+        assert_eq!(tall.next(30, desk), DialogFit::Fits);
+        let fits = FitState { fit: DialogFit::Fits, natural: vec2(700.0, 1300.0), pass: 10 };
+        assert_eq!(fits.next(11, desk), DialogFit::TooTall);
+        assert_eq!(fits.next(11, phone), DialogFit::TooWide);
+    }
 
     #[test]
     fn search_placeholder_never_overlaps_the_shortcut() {

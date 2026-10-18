@@ -1066,9 +1066,70 @@ fn download_type(name: &str) -> &'static str {
 #[cfg(target_arch = "wasm32")]
 const DOWNLOAD_URL_LIFETIME_MS: i32 = 60_000;
 
-/// Offer bytes as a browser download.
+/// Offer bytes as a browser download: on an iPhone or iPad through the Share sheet (Save to
+/// Files, AirDrop, Mail…), elsewhere as a download.
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn download(name: &str, bytes: &[u8]) -> Result<(), String> {
+    if share_on_apple_touch_device(name, bytes) {
+        return Ok(());
+    }
+    anchor_download(name, bytes)
+}
+
+/// Whether this is an iPhone, iPad or iPod (iPadOS reports a Mac with a touch screen).
+#[cfg(target_arch = "wasm32")]
+fn apple_touch_device(navigator: &web_sys::Navigator) -> bool {
+    let agent = navigator.user_agent().unwrap_or_default();
+    ["iPhone", "iPad", "iPod"].iter().any(|d| agent.contains(d)) || (agent.contains("Macintosh") && navigator.max_touch_points() > 1)
+}
+
+/// Hand the file to the iOS Share sheet. Safari's own downloads go wrong in an app on the Home
+/// Screen: the PDF can replace the app with a viewer there is no way back from, which looks like
+/// a crash. Returns `false` where the Share sheet can't take the file (another device, an old
+/// iOS), so the caller downloads it instead. If iOS refuses the sheet itself (it only opens
+/// straight after a tap), the file is downloaded then; cancelling the sheet does nothing.
+#[cfg(target_arch = "wasm32")]
+fn share_on_apple_touch_device(name: &str, bytes: &[u8]) -> bool {
+    use wasm_bindgen::{JsCast, JsValue, closure::Closure};
+    let Some(window) = web_sys::window() else { return false };
+    let navigator = window.navigator();
+    if !apple_touch_device(&navigator) {
+        return false;
+    }
+    let nav: &JsValue = navigator.as_ref();
+    let method = |name: &str| js_sys::Reflect::get(nav, &JsValue::from_str(name)).ok().and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+    let (Some(share), Some(can_share)) = (method("share"), method("canShare")) else { return false };
+    let parts = js_sys::Array::of1(&js_sys::Uint8Array::from(bytes));
+    let options = web_sys::FilePropertyBag::new();
+    options.set_type(download_type(name));
+    let Ok(file) = web_sys::File::new_with_u8_array_sequence_and_options(&parts, name, &options) else { return false };
+    let data = js_sys::Object::new();
+    if js_sys::Reflect::set(&data, &JsValue::from_str("files"), &js_sys::Array::of1(&file)).is_err() {
+        return false;
+    }
+    if can_share.call1(nav, &data).ok().and_then(|v| v.as_bool()) != Some(true) {
+        return false;
+    }
+    let Ok(promise) = share.call1(nav, &data).and_then(|p| p.dyn_into::<js_sys::Promise>()) else { return false };
+    let (name, bytes) = (name.to_owned(), bytes.to_vec());
+    let refused = Closure::once(move |error: JsValue| {
+        // AbortError: the user closed the sheet. Anything else: download it after all.
+        let kind = js_sys::Reflect::get(&error, &JsValue::from_str("name")).ok().and_then(|n| n.as_string()).unwrap_or_default();
+        if kind != "AbortError"
+            && let Err(e) = anchor_download(&name, &bytes)
+        {
+            log::warn!("could not save {name}: {e}");
+        }
+    });
+    let _ = promise.catch(&refused);
+    // Called at most once, when the share settles; the page keeps it until then.
+    refused.forget();
+    true
+}
+
+/// Download bytes through a link, as browsers other than iOS Safari handle best.
+#[cfg(target_arch = "wasm32")]
+fn anchor_download(name: &str, bytes: &[u8]) -> Result<(), String> {
     use wasm_bindgen::JsCast;
     let err = |e: wasm_bindgen::JsValue| format!("{e:?}");
     let array = js_sys::Uint8Array::from(bytes);

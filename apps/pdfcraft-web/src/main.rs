@@ -54,6 +54,8 @@ fn main() {
                             ctx.request_repaint();
                         });
                     }
+                    // A finger pans, the Apple Pencil draws: the app needs to know which is down.
+                    track_pointer_kind(app.pointer_kind.clone());
                     // eframe never raises a close request on a browser reload or tab close, so `guard_quit` never
                     // prompts; ask the browser to confirm instead while a document has unsaved work (#812).
                     warn_before_unload(app.unsaved_flag.clone());
@@ -104,6 +106,34 @@ fn warn_before_unload(unsaved: std::sync::Arc<std::sync::atomic::AtomicBool>) {
     });
     if window.add_event_listener_with_callback("beforeunload", handler.as_ref().unchecked_ref()).is_ok() {
         handler.forget();
+    }
+}
+
+/// Report whether a finger, the Apple Pencil or a mouse is pressing (`pdfcraft_ui_egui::touch`).
+/// egui sees fingers and the Pencil alike as touches; the browser's `pointerType` tells them
+/// apart. Listened for on the window in the capture phase, so the kind is known before eframe
+/// hands the press to the app.
+#[cfg(target_arch = "wasm32")]
+fn track_pointer_kind(kind: pdfcraft_ui_egui::touch::PointerKind) {
+    use eframe::wasm_bindgen::{JsCast, closure::Closure};
+    let Some(window) = web_sys::window() else { return };
+    let options = web_sys::AddEventListenerOptions::new();
+    options.set_capture(true);
+    options.set_passive(true);
+    for (name, down) in [("pointerdown", true), ("pointerup", false), ("pointercancel", false)] {
+        let kind = kind.clone();
+        let handler = Closure::<dyn FnMut(web_sys::PointerEvent)>::new(move |event: web_sys::PointerEvent| {
+            let pointer_type = event.pointer_type();
+            if down {
+                kind.pointer_down(&pointer_type);
+            } else {
+                kind.pointer_up(&pointer_type);
+            }
+        });
+        if window.add_event_listener_with_callback_and_add_event_listener_options(name, handler.as_ref().unchecked_ref(), &options).is_ok() {
+            // The listeners live as long as the page.
+            handler.forget();
+        }
     }
 }
 
