@@ -2434,3 +2434,6 @@ animation effects	Off	Kapalı
 	Immersive layout	Sürükleyici düzen
 	Undo ({key})	Geri al ({key})
 	Redo ({key})	Yinele ({key})
+	Draw with Apple Pencil only	Yalnızca Apple Pencil ile çiz
+	Annotate	Açıklama ekle
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	PDF olarak açıldı. Standart yazı tiplerinin çizemediği {chars} karakter kod noktası olarak yazıldı ve {images} görüntü dahil edilmedi.

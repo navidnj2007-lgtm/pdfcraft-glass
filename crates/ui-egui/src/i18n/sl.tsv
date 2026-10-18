@@ -2443,3 +2443,6 @@ animation effects	Off	Izklopljeni
 	Immersive layout	Poglobljena postavitev
 	Undo ({key})	Razveljavi ({key})
 	Redo ({key})	Ponovi ({key})
+	Draw with Apple Pencil only	Riši samo s pisalom Apple Pencil
+	Annotate	Označevanje
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Odprto kot PDF. {chars} znakov, ki jih standardne pisave ne morejo izrisati, je zapisanih kot kodne točke, {images} slik pa ni vključenih.

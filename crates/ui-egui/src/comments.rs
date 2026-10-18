@@ -519,6 +519,16 @@ pub struct CommentView {
 }
 
 impl CommentView {
+    /// Drop the drag drawing in progress, as Escape does, and ignore the rest of its drag (a
+    /// second finger turned a finger's stroke into a pinch, `touch`). Point-by-point drawings
+    /// (polygons) keep their points.
+    pub(crate) fn cancel_gesture(&mut self) {
+        if !matches!(self.gesture, Some(Gesture::Draw { tool, .. }) if tool.clicks_points()) {
+            self.gesture = None;
+        }
+        self.cancelled_drag = true;
+    }
+
     /// Takes back the last point of a polygon, cloud or connected lines being drawn; the first
     /// point's removal cancels the drawing. Returns whether there was such a drawing.
     pub fn undo_point(&mut self) -> bool {
@@ -771,14 +781,16 @@ pub(crate) fn page_input(ui: &egui::Ui, resp: &egui::Response, cx: &PageCx<'_>, 
                 && *page == cx.page
                 && let Some(p) = pointer
             {
-                let p = clamp_to(page_rect, p);
-                let u = cx.to_user(p);
                 if matches!(*tool, CommentTool::Ink | CommentTool::Eraser) {
-                    let last = points.last().map(|l| cx.to_screen(*l)).unwrap_or(p);
-                    if last.distance(p) >= 1.5 {
-                        points.push(u);
+                    for p in moves_this_frame(ui, p) {
+                        let p = clamp_to(page_rect, p);
+                        let last = points.last().map(|l| cx.to_screen(*l)).unwrap_or(p);
+                        if last.distance(p) >= 1.5 {
+                            points.push(cx.to_user(p));
+                        }
                     }
                 } else {
+                    let u = cx.to_user(clamp_to(page_rect, p));
                     points.truncate(1);
                     points.push(u);
                 }
@@ -1249,6 +1261,48 @@ fn paint_gesture(painter: &egui::Painter, cx: &PageCx<'_>, view: &DocView) {
     {
         paint_draw(painter, cx, tool, points);
     }
+}
+
+/// Where the Apple Pencil hovering at `at` (iPad Pro and Air with M2 and later) will mark the
+/// page with `tool`, as Apple Notes shows it: a dot of the pen's colour and width, the eraser's
+/// reach, or a small ring for the other tools.
+pub(crate) fn paint_pen_hover(painter: &egui::Painter, cx: &PageCx<'_>, tool: CommentTool, at: Pos2) {
+    let style = cx.prefs.style(tool);
+    let zoom = cx.xf.rect.width() / cx.xf.pw.max(1.0);
+    let ring = Stroke::new(1.0, Color32::from_black_alpha(140));
+    match tool {
+        CommentTool::Ink => {
+            let radius = (style.width as f32 * zoom / 2.0).clamp(2.5, 40.0);
+            painter.circle_filled(at, radius, color32(style.color).gamma_multiply(0.6));
+            painter.circle_stroke(at, radius + 1.0, Stroke::new(1.0, Color32::from_white_alpha(200)));
+        }
+        // The eraser's reach: 6 points on screen (`erase`).
+        CommentTool::Eraser => {
+            painter.circle_stroke(at, 6.0, ring);
+        }
+        _ => {
+            painter.circle_stroke(at, 3.0, ring);
+        }
+    }
+}
+
+/// Every position the pointer moved through this frame, in order, ending with the latest: the
+/// Apple Pencil reports more samples than there are frames (the web backend passes the
+/// browser's coalesced ones), and a stroke keeps their shape.
+fn moves_this_frame(ui: &egui::Ui, latest: Pos2) -> Vec<Pos2> {
+    let mut moves: Vec<Pos2> = ui.input(|i| {
+        i.events
+            .iter()
+            .filter_map(|e| match e {
+                egui::Event::PointerMoved(p) if p.is_finite() => Some(*p),
+                _ => None,
+            })
+            .collect()
+    });
+    if moves.last() != Some(&latest) {
+        moves.push(latest);
+    }
+    moves
 }
 
 /// A drawing tool's shape from its points (a live drag, or a released one still settling).
@@ -1743,7 +1797,7 @@ pub fn remember_custom_colour(ctx: &egui::Context, c: Rgb) {
     });
 }
 
-fn same_colour(a: &Rgb, b: &Rgb) -> bool {
+pub(crate) fn same_colour(a: &Rgb, b: &Rgb) -> bool {
     a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02)
 }
 

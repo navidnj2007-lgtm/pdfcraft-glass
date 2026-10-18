@@ -2578,3 +2578,6 @@ animation effects	Off	Desactivados
 	Immersive layout	Diseño inmersivo
 	Undo ({key})	Deshacer ({key})
 	Redo ({key})	Rehacer ({key})
+	Draw with Apple Pencil only	Dibujar solo con el Apple Pencil
+	Annotate	Anotar
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Abierto como PDF. {chars} caracteres que las fuentes estándar no pueden dibujar se escriben como puntos de código, y no se incluyen {images} imágenes.

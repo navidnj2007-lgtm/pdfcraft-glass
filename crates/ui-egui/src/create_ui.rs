@@ -90,8 +90,23 @@ impl PdfCraftApp {
     /// something Create understands (the caller then tries to open it as a PDF).
     pub(crate) fn open_converted(&mut self, name: &str, bytes: &[u8]) -> Option<Result<(), String>> {
         use pdfcraft_engine::SourceKind;
-        if !matches!(pdfcraft_engine::source_kind(name, bytes), Some(SourceKind::Image | SourceKind::Text)) {
+        if !matches!(pdfcraft_engine::source_kind(name, bytes), Some(SourceKind::Image | SourceKind::Text | SourceKind::Html)) {
             return None;
+        }
+        if pdfcraft_engine::source_kind(name, bytes) == Some(SourceKind::Html) {
+            // A web page: say what its conversion couldn't carry over.
+            let (created, report) = match self.session.create_from_html(name, bytes) {
+                Ok((pdf, report)) => (Ok(pdf), report),
+                Err(e) => (Err(e.to_string()), pdfcraft_engine::HtmlReport::default()),
+            };
+            let opened = self.open_created_bytes(&format!("{}.pdf", stem(name)), created);
+            if opened.is_ok() && (report.escaped > 0 || report.images_skipped > 0) {
+                self.notify_fmt(
+                    "Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.",
+                    &[("chars", &report.escaped.to_string()), ("images", &report.images_skipped.to_string())],
+                );
+            }
+            return Some(opened);
         }
         let created = self.session.convert_to_pdf(name, &Arc::new(bytes.to_vec())).map(|(_, pdf)| pdf);
         Some(self.open_created_bytes(&format!("{}.pdf", stem(name)), created.map_err(|e| e.to_string())))

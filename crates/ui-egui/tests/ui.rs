@@ -1021,6 +1021,32 @@ fn use_system_title_bar_swaps_the_header_bar_for_the_window_frame() {
     assert_eq!(decorations(&h), None);
 }
 
+/// Preferences ▸ Draw with Apple Pencil only: Auto (on once a Pencil has drawn), Yes or No,
+/// saved with the settings.
+#[test]
+fn preferences_choose_pencil_only_and_the_choice_is_saved() {
+    use egui::accesskit::Role;
+    use pdfcraft_ui_egui::touch::PencilOnly;
+    let mut h = harness(|app| app.set_option("dialog", "preferences").unwrap());
+    assert_eq!(h.state().pencil_only, PencilOnly::Automatic);
+    h.get_by_label("Draw with Apple Pencil only");
+    for (label, choice) in [("Yes", PencilOnly::On), ("No", PencilOnly::Off), ("Auto", PencilOnly::Automatic), ("Yes", PencilOnly::On)] {
+        h.get_by_role_and_label(Role::RadioButton, label).scroll_to_me();
+        h.run_steps(4);
+        h.get_by_role_and_label(Role::RadioButton, label).click();
+        h.run_steps(2);
+        assert_eq!(h.state().pencil_only, choice, "{label}");
+    }
+    let saved = h.state().persist();
+    let mut restored = PdfCraftApp::new();
+    restored.restore(&saved);
+    assert_eq!(restored.pencil_only, PencilOnly::On);
+    // Settings holding anything else leave the choice alone.
+    restored.restore(r#"{"pencil_only":"sometimes","pencil_seen":"maybe"}"#);
+    assert_eq!(restored.pencil_only, PencilOnly::On);
+    assert!(!restored.pencil_seen);
+}
+
 /// Preferences ▸ Animation effects: the system's animation setting until the user chooses On or
 /// Off. The choice is saved, and settings holding anything else leave it alone.
 #[test]

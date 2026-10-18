@@ -2388,3 +2388,6 @@ animation effects	Off	關
 	Immersive layout	沉浸式版面
 	Undo ({key})	復原 ({key})
 	Redo ({key})	重做 ({key})
+	Draw with Apple Pencil only	僅使用 Apple Pencil 繪圖
+	Annotate	註解
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	已作為 PDF 開啟。標準字型無法繪製的 {chars} 個字元已寫為碼位，{images} 張影像未包含在內。

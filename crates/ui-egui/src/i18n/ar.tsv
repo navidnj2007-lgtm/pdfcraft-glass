@@ -2715,3 +2715,6 @@ certificate	Version	الإصدار
 	Immersive layout	تخطيط غامر
 	Undo ({key})	تراجع ({key})
 	Redo ({key})	إعادة ({key})
+	Draw with Apple Pencil only	الرسم باستخدام Apple Pencil فقط
+	Annotate	التعليق التوضيحي
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	فُتح كملف PDF. كُتب {chars} من الأحرف التي لا تستطيع الخطوط القياسية رسمها كنقاط رموز، ولم تُضمَّن {images} من الصور.

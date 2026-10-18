@@ -4,7 +4,7 @@
 
 Every asset PdfCraft includes, bundles or uses to build its published material, with its author, source and licence. The policy is in [AGENTS.md](AGENTS.md) §1. The machine-readable list, with SHA-256 hashes, is [ATTRIBUTION.toml](ATTRIBUTION.toml). Licence texts are kept beside the assets and summarised in [NOTICE](NOTICE).
 
-## In this repository (272)
+## In this repository (273)
 
 | Asset | Title | Author | Licence | Source | Used for |
 |---|---|---|---|---|---|
@@ -207,6 +207,7 @@ Every asset PdfCraft includes, bundles or uses to build its published material, 
 | `assets/fonts/Inter-Medium.ttf` | Inter Medium | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/Inter-SemiBold.ttf` | Inter SemiBold | The Inter Project Authors (Rasmus Andersson) | OFL-1.1 | https://github.com/rsms/inter | UI font, embedded in the app; demo PDF labels |
 | `assets/fonts/JetBrainsMono-Regular.ttf` | JetBrains Mono Regular | The JetBrains Mono Project Authors | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono | UI monospace font; demo PDF code |
+| `vendor/eframe/data/icon.png` | egui logo (eframe's default window icon) | Emil Ernerfeldt and the egui contributors | MIT OR Apache-2.0 | https://github.com/emilk/egui (crates/eframe/data/icon.png, via the eframe 0.36.2 crate) | The vendored eframe's icon for a native window that sets none; PdfCraft's windows set their own, so it is not shown |
 | `vendor/hayro-interpret/assets/FoxitDingbats.pfb` | FoxitDingbats (standard-14 substitute font) | Foxit Software Inc. / PDFium Authors | BSD-3-Clause | https://pdfium.googlesource.com/pdfium (via hayro-interpret 0.7.0 assets/) | Renders non-embedded standard-14 fonts (vendored hayro-interpret) |
 | `vendor/hayro-interpret/assets/FoxitFixed.pfb` | FoxitFixed (standard-14 substitute font) | Foxit Software Inc. / PDFium Authors | BSD-3-Clause | https://pdfium.googlesource.com/pdfium (via hayro-interpret 0.7.0 assets/) | Renders non-embedded standard-14 fonts (vendored hayro-interpret) |
 | `vendor/hayro-interpret/assets/FoxitFixedBold.pfb` | FoxitFixedBold (standard-14 substitute font) | Foxit Software Inc. / PDFium Authors | BSD-3-Clause | https://pdfium.googlesource.com/pdfium (via hayro-interpret 0.7.0 assets/) | Renders non-embedded standard-14 fonts (vendored hayro-interpret) |

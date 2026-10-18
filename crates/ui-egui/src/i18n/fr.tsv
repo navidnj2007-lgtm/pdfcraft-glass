@@ -2438,3 +2438,6 @@ animation effects	Off	Désactivés
 	Immersive layout	Disposition immersive
 	Undo ({key})	Annuler ({key})
 	Redo ({key})	Rétablir ({key})
+	Draw with Apple Pencil only	Dessiner uniquement avec l’Apple Pencil
+	Annotate	Annoter
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Ouvert en PDF. {chars} caractères que les polices standard ne peuvent pas dessiner sont écrits sous forme de points de code, et {images} images ne sont pas incluses.

@@ -2689,3 +2689,6 @@ theme	Appearance	Išvaizda
 	Immersive layout	Įtraukiantis išdėstymas
 	Undo ({key})	Anuliuoti ({key})
 	Redo ({key})	Pakartoti ({key})
+	Draw with Apple Pencil only	Piešti tik Apple Pencil
+	Annotate	Anotuoti
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Atidaryta kaip PDF. {chars} simbolių, kurių standartiniai šriftai negali nupiešti, įrašyti kaip kodo taškai, o {images} vaizdų neįtraukta.

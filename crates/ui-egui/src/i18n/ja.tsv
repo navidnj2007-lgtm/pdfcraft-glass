@@ -2438,3 +2438,6 @@ animation effects	Off	オフ
 	Immersive layout	没入型レイアウト
 	Undo ({key})	取り消し ({key})
 	Redo ({key})	やり直し ({key})
+	Draw with Apple Pencil only	Apple Pencil のみで描画
+	Annotate	注釈
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	PDF として開きました。標準フォントで描画できない {chars} 文字はコードポイントとして書き込まれ、{images} 個の画像は含まれていません。

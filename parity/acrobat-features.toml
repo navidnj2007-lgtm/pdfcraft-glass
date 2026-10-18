@@ -1682,8 +1682,8 @@ milestone = "M3"
 status = "shipped"
 commands = ["file.pin_folder"]
 tools = []
-evidence = ["crates/ui-egui/tests/ui.rs::home_shows_welcome_and_tools", "crates/ui-egui/tests/folders.rs::a_pinned_folder_lists_its_newest_pdfs_on_home", "crates/ui-egui/tests/folders.rs::clicking_a_pinned_pdf_opens_it_and_adds_it_to_recent", "crates/ui-egui/tests/folders.rs::pinned_folders_survive_a_restart"]
-notes = "Desktop: folders pinned to Home (File ▸ Pin folder to Home…, up to 8) list their newest PDFs, read on a worker thread and refreshed every few seconds while Home shows; a folder that can't be read (moved, offline synced drive) stays pinned and says so. Pinned folders are local paths, so a cloud drive works through its synced folder (iCloud Drive, OneDrive, Dropbox). Not yet: subfolders, search within a pinned folder, the web build."
+evidence = ["crates/ui-egui/tests/ui.rs::home_shows_welcome_and_tools", "crates/ui-egui/src/home.rs::home_fits_a_phone_and_a_tablet", "crates/ui-egui/tests/folders.rs::a_pinned_folder_lists_its_newest_pdfs_on_home", "crates/ui-egui/tests/folders.rs::clicking_a_pinned_pdf_opens_it_and_adds_it_to_recent", "crates/ui-egui/tests/folders.rs::pinned_folders_survive_a_restart"]
+notes = "Desktop: folders pinned to Home (File ▸ Pin folder to Home…, up to 8) list their newest PDFs, read on a worker thread and refreshed every few seconds while Home shows; a folder that can't be read (moved, offline synced drive) stays pinned and says so. Pinned folders are local paths, so a cloud drive works through its synced folder (iCloud Drive, OneDrive, Dropbox). Home is a large title, Open file / Create a PDF / Combine files, Recent and every tool as a card, reflowing from a phone (two columns) to a desktop (up to six; `home::tests::home_fits_a_phone_and_a_tablet`); in the immersive layout (the web app) it has no tab strip or mode bar and carries find, Preferences and the main menu in its header. Not yet: subfolders, search within a pinned folder, the web build (no recent files there), thumbnails of recent files."
 
 [[feature]]
 id = "view.all-tools"
@@ -3693,7 +3693,7 @@ status = "shipped"
 commands = ["comment.ink"]
 tools = ["comment_add"]
 evidence = ["crates/ui-egui/tests/comments.rs::shapes_and_ink_are_drawn_by_dragging", "crates/annot/src/tests.rs::ink_strokes_are_smooth_curves_through_their_points", "crates/annot/src/tests.rs::drawings_resize_by_scaling_their_strokes"]
-notes = "one ink annotation per stroke; strokes are drawn as smooth curves through their points, as in Acrobat; resize with the 8 handles (the strokes scale into the new box)"
+notes = "one ink annotation per stroke; strokes are drawn as smooth curves through their points, as in Acrobat; resize with the 8 handles (the strokes scale into the new box). On a tablet (web app): the Apple Pencil draws from every coalesced sample, a hovering Pencil previews where it will draw and never draws, palms are ignored, and Draw with Apple Pencil only (Automatic, on once a Pencil has drawn; or On/Off) decides whether a finger draws or scrolls; a two-finger tap undoes, three redo. Tested with replayed Safari event sequences, not yet on hardware"
 
 [[feature]]
 id = "comment.eraser"
@@ -6877,11 +6877,11 @@ title = "Create PDF from an HTML file"
 area = "J"
 tier = "P2"
 milestone = "M10"
-status = "planned"
-commands = []
-tools = []
-evidence = []
-notes = ""
+status = "partial"
+commands = ["file.open"]
+tools = ["doc_create_multiple", "doc_combine"]
+evidence = ["crates/create/src/html/tests.rs::a_page_becomes_text_in_the_standard_fonts", "crates/create/src/html/tests.rs::links_become_link_annotations", "crates/create/src/html/tests.rs::lists_tables_and_rules", "crates/create/src/html/tests.rs::data_url_images_are_embedded_and_linked_ones_are_not", "crates/create/src/html/tests.rs::any_input_converts_without_panicking", "crates/engine/src/tests.rs::web_pages_convert_to_their_text"]
+notes = "Opening (or combining, or creating from) an .html/.htm/.xhtml file, or any file that starts as HTML, converts it to a new unsaved PDF (US Letter): headings, paragraphs, line breaks, ordered and unordered lists, block quotes, preformatted text, rules, tables with columns sized to their content (colspan, header cells), web and #anchor links as link annotations, and images embedded as data: URLs; bold, italic, underline, strike-through, colour, size, alignment, font family and sub/superscript from the elements and their style attributes; <meta charset> and BOMs pick the encoding. A tolerant clean-room reader of HTML syntax, never a browser engine. Missing: style sheets and layout CSS (floats, grids, positioning, backgrounds), scripts, linked images and other files (never fetched), page size and margins from the user's settings, and text outside Windows-1252 (written as [U+XXXX] code points, counted in a notice): non-Latin pages need embedded fonts first."
 
 [[feature]]
 id = "create.from-web-page"

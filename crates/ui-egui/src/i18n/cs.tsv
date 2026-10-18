@@ -2512,3 +2512,6 @@ animation effects	Off	Vypnuto
 	Immersive layout	Pohlcující rozvržení
 	Undo ({key})	Zpět ({key})
 	Redo ({key})	Znovu ({key})
+	Draw with Apple Pencil only	Kreslit pouze pomocí Apple Pencil
+	Annotate	Anotace
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Otevřeno jako PDF. {chars} znaků, které standardní písma neumí vykreslit, je zapsáno jako kódové body a {images} obrázků není zahrnuto.

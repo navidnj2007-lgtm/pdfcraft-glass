@@ -2347,3 +2347,6 @@ animation effects	Off	ఆఫ్
 	Immersive layout	ఇమ్మర్సివ్ లేఅవుట్
 	Undo ({key})	రద్దు చేయి ({key})
 	Redo ({key})	మళ్లీ చేయి ({key})
+	Draw with Apple Pencil only	Apple Pencil తో మాత్రమే గీయండి
+	Annotate	వ్యాఖ్యానించండి
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	PDF గా తెరవబడింది. ప్రామాణిక ఫాంట్‌లు గీయలేని {chars} అక్షరాలు కోడ్ పాయింట్‌లుగా వ్రాయబడ్డాయి, {images} చిత్రాలు చేర్చబడలేదు.

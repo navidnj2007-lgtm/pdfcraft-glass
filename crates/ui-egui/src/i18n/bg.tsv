@@ -2401,3 +2401,6 @@ animation effects	Off	Изключени
 	Immersive layout	Потапящо оформление
 	Undo ({key})	Отмени ({key})
 	Redo ({key})	Повтори ({key})
+	Draw with Apple Pencil only	Рисуване само с Apple Pencil
+	Annotate	Анотиране
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Отворено като PDF. {chars} знака, които стандартните шрифтове не могат да изобразят, са записани като кодови точки, а {images} изображения не са включени.

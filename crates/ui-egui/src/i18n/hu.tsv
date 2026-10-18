@@ -2437,3 +2437,6 @@ animation effects	Off	Ki
 	Immersive layout	Magával ragadó elrendezés
 	Undo ({key})	Visszavonás ({key})
 	Redo ({key})	Újra ({key})
+	Draw with Apple Pencil only	Rajzolás csak Apple Pencillel
+	Annotate	Jegyzetelés
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	PDF-ként megnyitva. {chars} karakter, amelyet a szabványos betűtípusok nem tudnak megjeleníteni, kódpontként szerepel, és {images} kép nincs benne.

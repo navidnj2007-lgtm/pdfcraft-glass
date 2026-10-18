@@ -2439,3 +2439,6 @@ animation effects	Off	Aus
 	Immersive layout	Immersives Layout
 	Undo ({key})	Rückgängig ({key})
 	Redo ({key})	Wiederholen ({key})
+	Draw with Apple Pencil only	Nur mit dem Apple Pencil zeichnen
+	Annotate	Kommentieren
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Als PDF geöffnet. {chars} Zeichen, die die Standardschriften nicht darstellen können, sind als Codepunkte geschrieben, und {images} Bilder sind nicht enthalten.

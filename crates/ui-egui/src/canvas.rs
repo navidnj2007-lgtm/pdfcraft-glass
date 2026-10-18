@@ -19,8 +19,12 @@ use crate::{PdfCraftApp, QuickTool, RightPanel, comments, icons, widgets};
 pub const PT: f32 = 96.0 / 72.0;
 const GAP: f32 = 14.0;
 const MARGIN: f32 = 28.0;
-/// Horizontal gutter that keeps pages clear of the floating quick-action bar.
+/// Horizontal gutter that keeps pages clear of the classic layout's floating quick-action bar.
 const SIDE: f32 = 70.0;
+/// The immersive layout's gutters (its tools are in a strip above the pages): a tablet's, and a
+/// phone's, where the page should fill the screen's width.
+const SIDE_IMMERSIVE: f32 = 28.0;
+const SIDE_PHONE: f32 = 8.0;
 const THUMB_TAG: u64 = 1 << 63;
 const TEXT_TAG: u64 = 1 << 62;
 /// A page rendered for the organize grid at the size it is drawn there.
@@ -461,6 +465,9 @@ pub struct DocView {
     /// shows before a raster arrives can be looked at however fast the renderer is.
     pub hold_rasters: bool,
     viewport_w: f32,
+    /// The horizontal gutter beside the pages this frame ([`SIDE`]; narrower in the immersive
+    /// layout).
+    side: f32,
     viewport_h: f32,
     page_count: usize,
     /// Page heights in points (view space), for mapping text positions to scroll offsets.
@@ -746,6 +753,7 @@ impl DocView {
             last_queue: Vec::new(),
             hold_rasters: false,
             viewport_w: 800.0,
+            side: SIDE,
             viewport_h: 600.0,
             page_count: info.pages.len(),
             page_heights: info.pages.iter().map(|p| p.height).collect(),
@@ -866,6 +874,7 @@ impl DocView {
         fresh.pages = std::mem::take(&mut self.pages);
         fresh.thumbs = std::mem::take(&mut self.thumbs);
         fresh.viewport_w = self.viewport_w;
+        fresh.side = self.side;
         fresh.viewport_h = self.viewport_h;
         fresh.viewport_screen = self.viewport_screen;
         *self = fresh;
@@ -1207,7 +1216,7 @@ impl DocView {
         let point = |x: Option<f32>, y: Option<f32>| p.dest_fraction(x, y, self.rotation);
         // The window's top-left as far as pages go: its left edge is the gutter that keeps them
         // clear of the floating quick-action bar, so `left` 0 shows the page's edge beside it.
-        let corner = vec2(SIDE, 0.0);
+        let corner = vec2(self.side, 0.0);
         let (fx, fy, rel) = match dest {
             DestView::Top => return,
             DestView::Xyz { left, top, zoom } => {
@@ -1931,7 +1940,7 @@ impl DocView {
         } else {
             (max_w, largest(|s| s.1))
         };
-        let avail_w = (self.viewport_w - 2.0 * SIDE).max(100.0);
+        let avail_w = (self.viewport_w - 2.0 * self.side).max(100.0);
         let per_row = if self.layout == PageLayout::TwoUp { 2.0 } else { 1.0 };
         match self.fit {
             Fit::Width => self.zoom = (avail_w - GAP * (per_row - 1.0)) / (w * PT * per_row),
@@ -1953,7 +1962,7 @@ impl DocView {
         let shown = info.pages.iter().enumerate().filter(|&(i, _)| single.is_none_or(|c| c == i));
         let max_w = shown.map(|(_, p)| self.display_size(p).0).fold(0.0, f32::max);
         let per_row = if self.layout == PageLayout::TwoUp { 2.0 } else { 1.0 };
-        (max_w * self.zoom * PT * per_row + 2.0 * SIDE).max(avail_w)
+        (max_w * self.zoom * PT * per_row + 2.0 * self.side).max(avail_w)
     }
 
     /// Page rects in content coordinates (origin at the scroll content's top-left).
@@ -1966,7 +1975,7 @@ impl DocView {
                 for p in &info.pages {
                     let (w, h) = self.display_size(p);
                     let size = vec2(w * s, h * s);
-                    rects.push(Rect::from_min_size(pos2(((content_w - size.x) / 2.0).max(SIDE), y), size));
+                    rects.push(Rect::from_min_size(pos2(((content_w - size.x) / 2.0).max(self.side), y), size));
                     y += size.y + GAP;
                 }
             }
@@ -1981,7 +1990,8 @@ impl DocView {
                     let sizes: Vec<Vec2> = pair.iter().map(|p| self.display_size(p)).map(|(w, h)| vec2(w * s, h * s)).collect();
                     let row_w: f32 = sizes.iter().map(|v| v.x).sum::<f32>() + GAP * (sizes.len() as f32 - 1.0);
                     let row_h = sizes.iter().map(|v| v.y).fold(0.0, f32::max);
-                    let mut x = if self.cover && ri == 0 { (content_w / 2.0 + GAP / 2.0).max(SIDE) } else { ((content_w - row_w) / 2.0).max(SIDE) };
+                    let mut x =
+                        if self.cover && ri == 0 { (content_w / 2.0 + GAP / 2.0).max(self.side) } else { ((content_w - row_w) / 2.0).max(self.side) };
                     for size in sizes {
                         rects.push(Rect::from_min_size(pos2(x, y + (row_h - size.y) / 2.0), size));
                         x += size.x + GAP;
@@ -2325,9 +2335,9 @@ const KEY_SCROLL_LINE: f32 = 40.0;
 
 pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    // A finger on the pages pans them; the Pencil keeps the tool (`touch`).
+    // A finger on the pages pans them or uses the tool; the Pencil keeps the tool (`touch`).
     let shown_at = app.views.get(index).map_or(egui::Rect::NOTHING, |v| v.viewport_screen);
-    app.touch_tools(ui.ctx(), shown_at);
+    app.touch_tools(ui.ctx(), shown_at, index);
     // Keyboard scrolling applies to this frame's page view only, never later.
     let key_scroll = std::mem::take(&mut app.views[index].key_scroll);
     // The Search panel closed: its search moves to the find bar.
@@ -2409,6 +2419,13 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
 
     let avail = ui.available_rect_before_wrap();
     view.viewport_w = avail.width();
+    view.side = if !immersive {
+        SIDE
+    } else if avail.width() < crate::immersive::PHONE {
+        SIDE_PHONE
+    } else {
+        SIDE_IMMERSIVE
+    };
     view.viewport_h = avail.height();
     let old_zoom = view.zoom;
     view.fit_zoom(info);
@@ -2664,7 +2681,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         // The page counts with its side gutters, which keep its edge clear of the floating
         // quick-action bar as the layout does.
         let (x, w) = (view.last_scroll.x, avail.width());
-        let (left, right) = (r.left() - SIDE, r.right() + SIDE);
+        let (left, right) = (r.left() - view.side, r.right() + view.side);
         let target = if right - left <= w { if left >= x && right <= x + w { x } else { r.center().x - w / 2.0 } } else { x.clamp(left, right - w) };
         if (target - x).abs() > 0.5 {
             scroll = scroll.horizontal_scroll_offset(target.clamp(0.0, (content_w - w).max(0.0)));
@@ -2688,6 +2705,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     view.current_scale_tag = tag;
     let hand = app.quick_tool == QuickTool::Hand;
     let tool = app.quick_tool;
+    // Where the Apple Pencil hovers without touching the screen (the web backend reports it).
+    let pen_hover = ui.ctx().data(|d| d.get_temp::<Pos2>(egui::Id::new(eframe::pointer_routing::PEN_HOVER)));
     // Text selection runs for the Select tool and for the markup tools (highlight…).
     let selects_text = match tool {
         QuickTool::Comment(t) => t.markup().is_some() || t == comments::CommentTool::ReplaceText,
@@ -3207,6 +3226,13 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 (matches!(tool, QuickTool::Select | QuickTool::Fill(_)) && !comments_hidden).then_some(view.comments.selected).flatten();
             view.signature_drag.prepare(ui.ctx(), doc, preview_target, scale);
             view.signature_drag.paint(painter, &pcx, &view.comments, view.pending_edit.as_ref());
+            // The Apple Pencil hovering above the page: where it will draw.
+            if let QuickTool::Comment(comment_tool) = tool
+                && allowed
+                && let Some(at) = pen_hover.filter(|at| xf.rect.contains(*at))
+            {
+                comments::paint_pen_hover(painter, &pcx, comment_tool, at);
+            }
 
             // Text layer: find matches, selection, I-beam and drag-to-select.
             let to_screen = |g: [f32; 4]| xf.view_rect(g);
@@ -4027,8 +4053,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     if copy_selected {
         app.execute("edit.copy");
     }
-    // Read mode hides the tools (#2646).
-    if app.mode != crate::Mode::Read {
+    // Read mode hides the tools (#2646); the immersive layout has them in its strip.
+    if app.mode != crate::Mode::Read && !crate::immersive::showing(app) {
         quick_bar(app, avail, ui);
     }
     if let Some((source, file, destination)) = remote_open {
@@ -4736,6 +4762,18 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                             .speed(0.25)
                             .suffix(" pt"),
                     );
+                }
+                // On a tablet, beside the pens: whether a finger draws too or only the Apple
+                // Pencil does (and a finger scrolls), as note-taking apps offer it.
+                if cfg!(target_arch = "wasm32")
+                    && across
+                    && matches!(app.quick_tool, QuickTool::Comment(_))
+                    && crate::touch::finger_role(app.quick_tool, true) == crate::touch::FingerRole::Pan
+                {
+                    let on = app.pencil_only_active();
+                    if icons::button(ui, "pen-tool", 32.0, on, tl!("Draw with Apple Pencil only")).clicked() {
+                        app.pencil_only = if on { crate::touch::PencilOnly::Off } else { crate::touch::PencilOnly::On };
+                    }
                 }
                 if let QuickTool::Comment(tool) = app.quick_tool {
                     if across {

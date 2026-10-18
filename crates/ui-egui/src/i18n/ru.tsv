@@ -2351,3 +2351,6 @@ animation effects	Off	Выкл
 	Immersive layout	Иммерсивный макет
 	Undo ({key})	Отменить ({key})
 	Redo ({key})	Повторить ({key})
+	Draw with Apple Pencil only	Рисовать только Apple Pencil
+	Annotate	Аннотации
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Открыто как PDF. {chars} символов, которые стандартные шрифты не могут отобразить, записаны как кодовые точки, а {images} изображений не включены.

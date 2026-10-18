@@ -967,6 +967,23 @@ fn mixed_files_convert_and_combine_in_order() {
 }
 
 #[test]
+fn web_pages_convert_to_their_text() {
+    let mut s = Session::new();
+    let html = b"<!doctype html><title>Saved</title><h1>Welcome</h1><p>Hello <b>web</b> page</p><ul><li>One</ul>".to_vec();
+    let (kind, pdf) = s.convert_to_pdf("saved.htm", &Arc::new(html)).unwrap();
+    assert_eq!(kind, SourceKind::Html);
+    let id = s.open_new("saved.pdf", pdf).unwrap();
+    let text = page_texts(&s, id).join("\n");
+    for expected in ["Welcome", "Hello web page", "One"] {
+        assert!(text.contains(expected), "{expected} in {text}");
+    }
+    // Recognised by its content too, whatever the file is called.
+    assert_eq!(pdfcraft_create::source_kind("download", b"<!DOCTYPE html><p>x"), Some(SourceKind::Html));
+    let (_, report) = s.create_from_html("x.html", "<p>\u{4e2d}</p><img src=a.png>".as_bytes()).unwrap();
+    assert_eq!((report.escaped, report.images_skipped), (1, 1));
+}
+
+#[test]
 fn utf16_and_code_page_text_files_convert_to_their_text() {
     let mut s = Session::new();
     // Notepad's "Unicode": UTF-16 little endian with a byte order mark.
@@ -1107,7 +1124,7 @@ fn a_page_with_a_form_field_shown_twice_keeps_one_field() {
 fn files_that_cannot_be_converted_are_refused_clearly() {
     let s = Session::new();
     let err = s.convert_to_pdf("report.docx", &Arc::new(b"PK\x03\x04".to_vec())).unwrap_err();
-    assert_eq!(err, EditError::Source("report.docx: this file type can't be converted; use a PDF, an image or a .txt file".into()));
+    assert_eq!(err, EditError::Source("report.docx: this file type can't be converted; use a PDF, an image, a .txt or an .html file".into()));
     assert!(matches!(s.convert_to_pdf("empty", &Arc::new(Vec::new())), Err(EditError::Source(_))));
     // Damaged inputs of a known type fail with an error, not a panic.
     assert!(s.convert_to_pdf("bad.png", &Arc::new(b"\x89PNG\r\n\x1a\nnope".to_vec())).is_err());

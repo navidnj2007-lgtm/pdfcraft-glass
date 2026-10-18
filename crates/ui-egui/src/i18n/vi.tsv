@@ -2691,3 +2691,6 @@ key	Space	Space
 	Immersive layout	Bố cục toàn màn hình
 	Undo ({key})	Hoàn tác ({key})
 	Redo ({key})	Làm lại ({key})
+	Draw with Apple Pencil only	Chỉ vẽ bằng Apple Pencil
+	Annotate	Chú thích
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Đã mở dưới dạng PDF. {chars} ký tự mà phông chữ chuẩn không vẽ được đã được ghi dưới dạng điểm mã, và {images} hình ảnh không được đưa vào.

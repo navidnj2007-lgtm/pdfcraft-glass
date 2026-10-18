@@ -2444,3 +2444,6 @@ animation effects	Off	Ανενεργά
 	Immersive layout	Καθηλωτική διάταξη
 	Undo ({key})	Αναίρεση ({key})
 	Redo ({key})	Επανάληψη ({key})
+	Draw with Apple Pencil only	Σχεδίαση μόνο με το Apple Pencil
+	Annotate	Σχολιασμός
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Άνοιξε ως PDF. {chars} χαρακτήρες που δεν μπορούν να σχεδιάσουν οι τυπικές γραμματοσειρές γράφτηκαν ως σημεία κώδικα και {images} εικόνες δεν περιλαμβάνονται.

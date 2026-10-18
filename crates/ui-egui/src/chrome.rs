@@ -733,6 +733,14 @@ pub(crate) fn menu_items(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         if ui.add(widgets::checkbox(&mut app.immersive, tl!("Immersive layout"))).changed() {
             ui.close();
         }
+        ui.menu_button(tl!("Draw with Apple Pencil only"), |ui| {
+            for choice in crate::touch::PencilOnly::ALL {
+                if ui.add(widgets::radio(app.pencil_only == choice, choice.label())).clicked() {
+                    app.pencil_only = choice;
+                    ui.close();
+                }
+            }
+        });
     });
     ui.menu_button(tl!("Help"), |ui| crate::commands::registry_menu(app, ui, "Help"));
 }

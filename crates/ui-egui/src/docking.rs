@@ -376,10 +376,10 @@ pub(crate) const COMPACT_WIDTH: f32 = 600.0;
 const SHEET_BAR: f32 = 44.0;
 
 /// A floating sheet (immersive layout on a wide screen): its width, its distance from the
-/// window's edges, and its top, below the floating controls.
+/// window's edges, and its top, below the immersive layout's bars.
 const SHEET_WIDTH: f32 = 340.0;
 const SHEET_MARGIN: f32 = 12.0;
-const SHEET_TOP: f32 = 72.0;
+const SHEET_TOP: f32 = 12.0;
 
 /// The document area: Home, Combine, a document, or a side-by-side comparison.
 fn canvas(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui, t: &crate::theme::Tokens) {
@@ -500,7 +500,8 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         workspace = Workspace::default();
         let _ = sync(&mut workspace, app);
     }
-    if ui.available_width() < COMPACT_WIDTH || crate::immersive::showing(app) {
+    // The immersive layout, on Home too: panels open as sheets (Home lists the tools itself).
+    if ui.available_width() < COMPACT_WIDTH || crate::immersive::showing(app) || (app.immersive && app.active.is_none() && !app.combine_showing()) {
         app.docking = workspace;
         show_compact(app, ui, &t);
         return;

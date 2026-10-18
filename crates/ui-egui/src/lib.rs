@@ -533,6 +533,13 @@ pub struct PdfCraftApp {
     /// Whether a finger, the Apple Pencil or a mouse is pressing now: the web app's pointer
     /// listeners report it ([`touch::PointerKind`]).
     pub pointer_kind: touch::PointerKind,
+    /// View ▸ Draw with Apple Pencil Only: whether a finger may mark the page ([`touch`]).
+    pub pencil_only: touch::PencilOnly,
+    /// An Apple Pencil (any stylus) has touched the screen, which turns an Automatic
+    /// [`Self::pencil_only`] on. Remembered across restarts.
+    pub pencil_seen: bool,
+    /// A two- or three-finger tap on the page in progress ([`touch::multi_tap_step`]).
+    pub(crate) multi_tap: Option<touch::MultiTap>,
     /// Comment author, per-tool colours and widths, pin.
     pub comment_prefs: comments::CommentPrefs,
     /// Resolved colours, including the current OS theme when following the system.
@@ -548,10 +555,15 @@ pub struct PdfCraftApp {
     desktop_theme_enabled: bool,
     /// How far a mouse-wheel notch scrolls.
     pub scroll_speed: scroll_speed::ScrollSpeed,
-    /// View ▸ Immersive layout: with a document open, the page fills the window and the controls
-    /// float over it on glass capsules, as in an iPad app ([immersive]). Off in a bare
+    /// View ▸ Immersive layout: with a document open, a top bar with the workspaces as tabs and a
+    /// strip of the tab's tools above the page, as in iPad PDF apps ([immersive]); Home without
+    /// the tab strip and mode bar, panels as sheets. Off in a bare
     /// [PdfCraftApp::new]; the desktop and web apps turn it on unless the settings say otherwise.
     pub immersive: bool,
+    /// The immersive layout's tab (View, Annotate, Draw…): which tools its strip shows.
+    pub doc_tab: immersive::Tab,
+    /// The immersive layout's settings for the chosen tool (colour, thickness, opacity) are open.
+    pub(crate) tool_sheet: bool,
     /// Preferences ▸ Animation effects: on, off, or as the system's animation setting says.
     pub animation_effects: motion::AnimationEffects,
     /// Whether the system asked for no animations, and how the desktop app asks it.
@@ -930,6 +942,9 @@ impl PdfCraftApp {
             space_hand: None,
             finger_hand: None,
             pointer_kind: Default::default(),
+            pencil_only: Default::default(),
+            pencil_seen: false,
+            multi_tap: None,
             comment_prefs: Default::default(),
             theme: ThemeKind::Light,
             theme_preference: ThemePreference::Light,
@@ -940,6 +955,8 @@ impl PdfCraftApp {
             desktop_theme_enabled: false,
             scroll_speed: scroll_speed::ScrollSpeed::default(),
             immersive: false,
+            doc_tab: Default::default(),
+            tool_sheet: false,
             animation_effects: motion::AnimationEffects::default(),
             motion: motion::Motion::default(),
             language: i18n::AUTO.to_string(),
@@ -2328,6 +2345,8 @@ impl PdfCraftApp {
         });
         // Beside the literal above, which is at serde_json's macro recursion limit.
         v["immersive"] = serde_json::Value::Bool(self.immersive);
+        v["pencil_only"] = serde_json::to_value(self.pencil_only).unwrap_or(serde_json::Value::Null);
+        v["pencil_seen"] = serde_json::Value::Bool(self.pencil_seen);
         // Set apart: one more key inside the macro above passes serde_json's recursion limit.
         v["redact_prefs"] = self.redact_defaults.to_json();
         // Set outside json! above, which is at serde_json's macro recursion limit.
@@ -2379,6 +2398,12 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["immersive"].as_bool() {
             self.immersive = on;
+        }
+        if let Ok(pencil_only) = serde_json::from_value::<touch::PencilOnly>(v["pencil_only"].clone()) {
+            self.pencil_only = pencil_only;
+        }
+        if let Some(seen) = v["pencil_seen"].as_bool() {
+            self.pencil_seen = seen;
         }
         if let Ok(effects) = serde_json::from_value::<motion::AnimationEffects>(v["animation_effects"].clone()) {
             self.animation_effects = effects;
@@ -2536,6 +2561,9 @@ impl PdfCraftApp {
             }
             ("animation_effects", _) => {
                 self.animation_effects = motion::AnimationEffects::parse(value).ok_or("animation_effects must be system, on, or off")?;
+            }
+            ("pencil_only", _) => {
+                self.pencil_only = touch::PencilOnly::parse(value).ok_or("pencil_only must be automatic, on, or off")?;
             }
             ("panel", _) => {
                 self.right = match value {
@@ -3188,14 +3216,19 @@ impl eframe::App for PdfCraftApp {
         if self.draws_window_frame() {
             window_controls::resize_edges(&ctx);
         }
-        // Immersive: the document fills the window; its controls float over it (`immersive`).
-        // The desktop keeps its tab strip, which is also its title bar and holds the tabs.
+        // Immersive: a top bar with the workspaces as tabs and a strip of the tab's tools above
+        // the document (`immersive`); Home has its own header (`home`). The desktop keeps its
+        // tab strip, which is also its title bar and holds the tabs.
         let immersive = immersive::showing(self);
-        if !immersive || cfg!(not(target_arch = "wasm32")) {
+        let touch_home = self.immersive && self.active.is_none() && !self.combine_showing();
+        if !(immersive || touch_home) || cfg!(not(target_arch = "wasm32")) {
             chrome::tab_strip(self, ui);
         }
-        if !immersive {
+        if !(immersive || touch_home) {
             chrome::mode_bar(self, ui);
+        }
+        if immersive {
+            immersive::bars(self, ui);
         }
         if self.active.is_some() && !immersive {
             chrome::right_rail(self, ui);
@@ -3216,7 +3249,9 @@ impl eframe::App for PdfCraftApp {
             if immersive {
                 immersive::set_area(ui.ctx(), ui.max_rect());
                 docking::show(self, ui);
-                immersive::overlay(self, ui.ctx(), ui.max_rect());
+                immersive::page_pill(self, ui.ctx(), ui.max_rect());
+            } else if touch_home {
+                docking::show(self, ui);
             } else if self.mode == Mode::Read {
                 match self.active {
                     None if self.combine_showing() => combine_ui::page(self, ui),

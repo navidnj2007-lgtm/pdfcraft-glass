@@ -692,8 +692,9 @@ impl crate::PdfCraftApp {
     pub fn add_image_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         self.pick_image(tl!("Choose an image"), |app, name, bytes| app.add_image(name, bytes));
+        // A browser's picker is asynchronous: the image arrives as a file request.
         #[cfg(target_arch = "wasm32")]
-        self.notify_tr("Adding images arrives on the web with file pickers for images");
+        self.pick_files(crate::files::FilePurpose::AddImage, false);
     }
 
     /// Edit text & images ▸ Replace Image: pick a file to draw in a page image's place.

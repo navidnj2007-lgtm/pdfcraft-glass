@@ -257,7 +257,8 @@ fn typing_moving_styling_and_deleting_added_content() {
         let mut w = enc.write_header().unwrap();
         w.write_image_data(&[90u8; 1800]).unwrap();
     }
-    h.state_mut().add_image("logo.png".into(), png);
+    // As a browser delivers a picked image (Edit ▸ Add image on the web): a file request.
+    h.state_mut().use_files(pdfcraft_ui_egui::FilePurpose::AddImage, vec![("logo.png".into(), png)]);
     h.run_steps(3);
     let a = added(&h);
     assert_eq!(a.len(), 1);

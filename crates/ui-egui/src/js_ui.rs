@@ -395,6 +395,13 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
             widgets::radio_value(ui, &mut app.animation_effects, choice, tl_ctx!("animation effects", choice.label()));
         }
     });
+    // A tablet's fingers and Apple Pencil (`touch`): Auto turns on once a Pencil has drawn.
+    ui.horizontal(|ui| {
+        ui.label(tl!("Draw with Apple Pencil only"));
+        for choice in crate::touch::PencilOnly::ALL {
+            widgets::radio_value(ui, &mut app.pencil_only, choice, choice.label());
+        }
+    });
     // Only where the app draws the title bar (GNOME on Wayland); elsewhere the desktop draws it.
     if app.window_controls.is_some() {
         ui.add(widgets::checkbox(&mut app.system_title_bar, tl!("Use system title bar")))

@@ -23,9 +23,10 @@ fn main() {
                 options,
                 Box::new(|cc| {
                     let mut app = PdfCraftApp::new();
-                    // Documents open in the immersive layout (as on an iPad) unless the settings
-                    // below say otherwise.
+                    // Documents open in the immersive layout (as on an iPad), in the system's light
+                    // or dark appearance, unless the settings below say otherwise.
                     app.immersive = true;
+                    let _ = app.set_option("theme", "system");
                     // "printcraft": settings saved under the app's former name, PrintCraft.
                     if let Some(json) = cc.storage.and_then(|s| s.get_string("pdfcraft").or_else(|| s.get_string("printcraft"))) {
                         app.restore(&json);

@@ -1,5 +1,6 @@
-//! Fingers and the Apple Pencil on a tablet: a finger pans the pages whatever tool is chosen
-//! and gives the tool back when it lifts; the Pencil uses the tool and never scrolls.
+//! Fingers and the Apple Pencil on a tablet: a finger drag pans the pages with Select, and with
+//! the pens while only the Pencil draws, and gives the tool back when it lifts; otherwise a
+//! finger draws and two fingers pan. The Pencil uses the tool and never scrolls.
 
 use egui::{Event, Pos2, TouchDeviceId, TouchId, TouchPhase, pos2, vec2};
 use egui_kittest::Harness;
@@ -57,17 +58,34 @@ fn annotations(h: &Harness<'static, PdfCraftApp>) -> usize {
 /// `PointerEvent.pointerType` says ("touch" for a finger, "pen" for the Pencil), and egui gets
 /// the press, moves and release eframe derives from the touch events.
 fn stroke(h: &mut Harness<'static, PdfCraftApp>, pointer_type: &str, path: &[Pos2]) {
+    strokes(h, pointer_type, &[path]);
+}
+
+/// Touches moving together along `paths` (one per finger, of equal length), the first being the
+/// one that drives the egui pointer.
+fn strokes(h: &mut Harness<'static, PdfCraftApp>, pointer_type: &str, paths: &[&[Pos2]]) {
+    let Some(path) = paths.first() else { return };
     let (Some(&first), Some(&last)) = (path.first(), path.last()) else { return };
     h.state().pointer_kind.pointer_down(pointer_type);
-    let touch = |phase, pos| Event::Touch { device_id: TouchDeviceId(1), id: TouchId(1), phase, pos, force: None };
+    let touch = |id: usize, phase, pos| Event::Touch { device_id: TouchDeviceId(1), id: TouchId(id as u64 + 1), phase, pos, force: None };
     let primary = |pos, pressed| Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() };
-    h.input_mut().events.extend([Event::PointerMoved(first), primary(first, true), touch(TouchPhase::Start, first)]);
+    h.input_mut().events.extend([Event::PointerMoved(first), primary(first, true)]);
+    for (k, p) in paths.iter().enumerate() {
+        h.input_mut().events.push(touch(k, TouchPhase::Start, p[0]));
+    }
     h.run_steps(1);
-    for &p in &path[1..] {
-        h.input_mut().events.extend([Event::PointerMoved(p), touch(TouchPhase::Move, p)]);
+    for step in 1..path.len() {
+        h.input_mut().events.push(Event::PointerMoved(path[step]));
+        for (k, p) in paths.iter().enumerate() {
+            h.input_mut().events.push(touch(k, TouchPhase::Move, p[step]));
+        }
         h.run_steps(1);
     }
-    h.input_mut().events.extend([primary(last, false), touch(TouchPhase::End, last), Event::PointerGone]);
+    h.input_mut().events.push(primary(last, false));
+    for (k, p) in paths.iter().enumerate() {
+        h.input_mut().events.push(touch(k, TouchPhase::End, p[p.len() - 1]));
+    }
+    h.input_mut().events.push(Event::PointerGone);
     h.run_steps(1);
     h.state().pointer_kind.pointer_up(pointer_type);
     h.run_steps(3);
@@ -91,8 +109,9 @@ fn a_finger_scrolls_the_pages_and_gives_the_tool_back() {
 }
 
 #[test]
-fn a_finger_never_draws_with_the_pen() {
+fn with_pencil_only_a_finger_never_draws_with_the_pen() {
     let mut h = harness();
+    h.state_mut().pencil_only = pdfcraft_ui_egui::touch::PencilOnly::On;
     assert!(h.state_mut().execute("comment.ink"));
     let (before, notes) = (page_top(&h), annotations(&h));
     stroke(&mut h, "touch", &path(pos2(512.0, 600.0), pos2(512.0, 250.0), 8));
@@ -125,4 +144,56 @@ fn a_palm_resting_while_the_pencil_writes_stays_the_pencils() {
     kind.pointer_up("touch");
     kind.pointer_up("pen");
     assert_eq!(kind.get(), pdfcraft_ui_egui::touch::Kind::Mouse);
+}
+
+#[test]
+fn without_pencil_only_a_finger_draws_and_two_fingers_scroll() {
+    let mut h = harness();
+    // An iPhone, or an iPad without a Pencil: Automatic is off until a Pencil draws.
+    assert!(!h.state().pencil_only_active());
+    assert!(h.state_mut().execute("comment.ink"));
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    let (before, notes) = (page_top(&h), annotations(&h));
+    let (from, to) = (pos2(page.center().x - 80.0, 400.0), pos2(page.center().x + 80.0, 460.0));
+    stroke(&mut h, "touch", &path(from, to, 10));
+    assert_eq!(annotations(&h), notes + 1, "the finger drew one ink stroke");
+    assert!((page_top(&h) - before).abs() < 0.5, "and the page stayed put");
+    // Two fingers dragging up scroll, and draw nothing.
+    let a = path(pos2(450.0, 600.0), pos2(450.0, 250.0), 8);
+    let b = path(pos2(560.0, 600.0), pos2(560.0, 250.0), 8);
+    strokes(&mut h, "touch", &[&a, &b]);
+    assert!(page_top(&h) < before - 150.0, "two fingers scrolled: {before} → {}", page_top(&h));
+    assert_eq!(annotations(&h), notes + 1, "the pinch drew nothing");
+    assert!(matches!(h.state().quick_tool, QuickTool::Comment(_)), "the pen is still chosen");
+}
+
+#[test]
+fn the_pencil_turns_automatic_pencil_only_on() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("comment.ink"));
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    stroke(&mut h, "pen", &path(pos2(page.center().x - 60.0, 400.0), pos2(page.center().x + 60.0, 420.0), 8));
+    assert!(h.state().pencil_seen && h.state().pencil_only_active());
+    // From now on a finger scrolls.
+    let (before, notes) = (page_top(&h), annotations(&h));
+    stroke(&mut h, "touch", &path(pos2(512.0, 600.0), pos2(512.0, 250.0), 8));
+    assert!(page_top(&h) < before - 200.0, "the finger scrolled");
+    assert_eq!(annotations(&h), notes);
+}
+
+#[test]
+fn a_two_finger_tap_undoes_and_draws_nothing() {
+    for pencil_only in [pdfcraft_ui_egui::touch::PencilOnly::On, pdfcraft_ui_egui::touch::PencilOnly::Off] {
+        let mut h = harness();
+        h.state_mut().pencil_only = pencil_only;
+        assert!(h.state_mut().execute("comment.ink"));
+        let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+        let notes = annotations(&h);
+        stroke(&mut h, "pen", &path(pos2(page.center().x - 60.0, 400.0), pos2(page.center().x + 60.0, 420.0), 8));
+        assert_eq!(annotations(&h), notes + 1);
+        let a = [pos2(450.0, 500.0), pos2(450.0, 500.0)];
+        let b = [pos2(560.0, 500.0), pos2(560.0, 500.0)];
+        strokes(&mut h, "touch", &[&a, &b]);
+        assert_eq!(annotations(&h), notes, "{pencil_only:?}: the two-finger tap undid the stroke and left no dot");
+    }
 }

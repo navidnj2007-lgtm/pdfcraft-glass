@@ -2650,3 +2650,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Immersive layout	Layout immersivo
 	Undo ({key})	Annulla ({key})
 	Redo ({key})	Ripeti ({key})
+	Draw with Apple Pencil only	Disegna solo con Apple Pencil
+	Annotate	Annota
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Aperto come PDF. {chars} caratteri che i font standard non possono disegnare sono scritti come punti di codice e {images} immagini non sono incluse.

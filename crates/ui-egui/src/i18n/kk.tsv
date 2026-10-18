@@ -2436,3 +2436,6 @@ animation effects	Off	Өшірулі
 	Immersive layout	Иммерсивті орналасу
 	Undo ({key})	Болдырмау ({key})
 	Redo ({key})	Қайталау ({key})
+	Draw with Apple Pencil only	Тек Apple Pencil арқылы салу
+	Annotate	Аннотация
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	PDF ретінде ашылды. Стандартты қаріптер сала алмайтын {chars} таңба код нүктелері ретінде жазылды, ал {images} сурет қосылмады.

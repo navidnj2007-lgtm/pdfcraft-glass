@@ -2414,3 +2414,6 @@ animation effects	Off	Wyłączone
 	Immersive layout	Układ immersyjny
 	Undo ({key})	Cofnij ({key})
 	Redo ({key})	Ponów ({key})
+	Draw with Apple Pencil only	Rysuj tylko za pomocą Apple Pencil
+	Annotate	Adnotacje
+	Opened as a PDF. {chars} characters the standard fonts can't draw are written as code points, and {images} images aren't included.	Otwarto jako PDF. {chars} znaków, których standardowe czcionki nie potrafią narysować, zapisano jako punkty kodowe, a {images} obrazów nie dołączono.
