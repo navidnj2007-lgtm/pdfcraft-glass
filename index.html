@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- The app zooms pages itself (pinch on the canvas), so the browser must not zoom the
+         whole page; viewport-fit=cover lets the safe-area padding below keep clear of the
+         notch and home indicator on iPhone and iPad. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>PdfCraft</title>
+    <!-- Add to Home Screen (iOS, iPadOS, Android): opens full screen like an installed app. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="PdfCraft" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/256/ai.storyteller.pdfcraft.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/32/ai.storyteller.pdfcraft.png" />
+    
+    
+    
+    
+    
+<script type="module">
+import init, * as bindings from './pdfcraft-web-c67726c2d2694a.js';
+const wasm = await init({ module_or_path: './pdfcraft-web-c67726c2d2694a_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #f2f2f7; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+      /* Fixed so iOS Safari cannot rubber-band or scroll the page under the app; padded by the
+         safe areas so nothing sits under the notch, rounded corners or home indicator. */
+      body {
+        position: fixed; inset: 0; box-sizing: border-box;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      /* Touches go to the app (scrolling, pinch zoom, drawing), not to the browser's own
+         gestures, text selection or long-press callout. */
+      canvas {
+        width: 100%; height: 100%; display: block; outline: none;
+        touch-action: none; -webkit-user-select: none; user-select: none;
+        -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+      }
+      @media (prefers-color-scheme: dark) { html, body { background: #000000; } }
+    </style>
+  <link rel="modulepreload" href="./pdfcraft-web-c67726c2d2694a.js" crossorigin="anonymous" integrity="sha384-rsOU/ffTLZklaeIvvOEFs435FoBVzuTEBxDeL5fXECRiuKpGZmzquiorEDH+5R3e"><link rel="preload" href="./pdfcraft-web-c67726c2d2694a_bg.wasm" crossorigin="anonymous" integrity="sha384-QfbVhZDjl5GeSn1vXDcTMdEM2jINMTmPVHrWAbIxyVguzB1DVnSxNrkQSdSl9uli" as="fetch" type="application/wasm"></head>
+  <body>
+    <canvas id="pdfcraft"></canvas>
+  </body>
+</html>
